@@ -29,6 +29,6 @@ conversion pipeline, built in Python.
 - Graphviz (Diagrams)
 
 ## Course
-Formal Languages & Automata — COMSATS University Islamabad
+Formal Languages & Automata — national university of technology
 Student: Amna Khurram | F24605061 | CS 2024-B
 Instructor: Naveed Yousaf
