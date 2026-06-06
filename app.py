@@ -75,6 +75,37 @@ if "nfa" not in st.session_state:
     st.session_state.postfix = None
     st.session_state.regex = None
 
+
+def nfa_dot_source(nfa):
+    dot_lines = ['digraph NFA {', '    rankdir=LR;',
+                 '    node [shape=circle];',
+                 '    "__start__" [shape=none label=""];',
+                 f'    "__start__" -> "q{nfa.start_state.id}";']
+    for s in nfa.accept_states:
+        dot_lines.append(f'    "q{s.id}" [shape=doublecircle];')
+    for s in nfa.states:
+        for sym, targets in s.transitions.items():
+            lbl = sym if sym != EPSILON else 'ε'
+            for t in targets:
+                dot_lines.append(f'    "q{s.id}" -> "q{t.id}" [label="{lbl}"];')
+    dot_lines.append('}')
+    return '\n'.join(dot_lines)
+
+
+def dfa_dot_source(dfa):
+    dot_lines = ['digraph DFA {', '    rankdir=LR;',
+                 '    node [shape=circle];',
+                 '    "__start__" [shape=none label=""];',
+                 f'    "__start__" -> "{dfa.start_state.name}";']
+    for ds in dfa.accept_states:
+        dot_lines.append(f'    "{ds.name}" [shape=doublecircle];')
+    for src, sym_map in dfa.transition_table.items():
+        for sym, tgt in sym_map.items():
+            if tgt != "∅":
+                dot_lines.append(f'    "{src}" -> "{tgt}" [label="{sym}"];')
+    dot_lines.append('}')
+    return '\n'.join(dot_lines)
+
 # ── Convert ───────────────────────────────────────────────────────────────────
 if convert_btn:
     try:
@@ -107,7 +138,14 @@ if nfa and dfa:
     st.divider()
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 NFA Table", "📊 DFA Table", "🔍 NFA Details", "🔍 DFA Details"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📊 NFA Table",
+        "📊 DFA Table",
+        "🖼️ NFA Graph",
+        "🖼️ DFA Graph",
+        "🔍 NFA Details",
+        "🔍 DFA Details",
+    ])
 
     # NFA Table
     with tab1:
@@ -169,49 +207,39 @@ if nfa and dfa:
 
         st.dataframe(pd.DataFrame(dfa_rows), use_container_width=True, hide_index=True)
 
-    # NFA Details
+    # NFA Graph
     with tab3:
+        st.markdown("### NFA Graph")
+        nfa_dot = nfa_dot_source(nfa)
+        st.graphviz_chart(nfa_dot, use_container_width=True)
+        st.code(nfa_dot, language="dot")
+
+    # DFA Graph
+    with tab4:
+        st.markdown("### DFA Graph")
+        dfa_dot = dfa_dot_source(dfa)
+        st.graphviz_chart(dfa_dot, use_container_width=True)
+        st.code(dfa_dot, language="dot")
+
+    # NFA Details
+    with tab5:
         st.markdown("### NFA Details")
         st.markdown(f"**Total States:** {len(nfa.states)}")
         st.markdown(f"**Start State:** q{nfa.start_state.id}")
         st.markdown(f"**Accept States:** {[str(s) for s in nfa.accept_states]}")
         st.markdown(f"**Alphabet:** {sorted(nfa.alphabet)}")
         st.markdown("**DOT Source (paste at graphviz.online to visualize):**")
-        # Generate DOT
-        dot_lines = ['digraph NFA {', '    rankdir=LR;',
-                     '    node [shape=circle];',
-                     '    "__start__" [shape=none label=""];',
-                     f'    "__start__" -> "q{nfa.start_state.id}";']
-        for s in nfa.accept_states:
-            dot_lines.append(f'    "q{s.id}" [shape=doublecircle];')
-        for s in nfa.states:
-            for sym, targets in s.transitions.items():
-                lbl = sym if sym != EPSILON else 'ε'
-                for t in targets:
-                    dot_lines.append(f'    "q{s.id}" -> "q{t.id}" [label="{lbl}"];')
-        dot_lines.append('}')
-        st.code('\n'.join(dot_lines), language="dot")
+        st.code(nfa_dot_source(nfa), language="dot")
         st.info("💡 Copy the DOT code above and paste it at **https://graphviz.online** to see the NFA diagram!")
 
     # DFA Details
-    with tab4:
+    with tab6:
         st.markdown("### DFA Details")
         st.markdown(f"**Total States:** {len(dfa.states)}")
         st.markdown(f"**Start State:** {dfa.start_state.name}")
         st.markdown(f"**Accept States:** {[s.name for s in dfa.accept_states]}")
         st.markdown("**DOT Source (paste at graphviz.online to visualize):**")
-        dot_lines = ['digraph DFA {', '    rankdir=LR;',
-                     '    node [shape=circle];',
-                     '    "__start__" [shape=none label=""];',
-                     f'    "__start__" -> "{dfa.start_state.name}";']
-        for ds in dfa.accept_states:
-            dot_lines.append(f'    "{ds.name}" [shape=doublecircle];')
-        for src, sym_map in dfa.transition_table.items():
-            for sym, tgt in sym_map.items():
-                if tgt != "∅":
-                    dot_lines.append(f'    "{src}" -> "{tgt}" [label="{sym}"];')
-        dot_lines.append('}')
-        st.code('\n'.join(dot_lines), language="dot")
+        st.code(dfa_dot_source(dfa), language="dot")
         st.info("💡 Copy the DOT code above and paste it at **https://graphviz.online** to see the DFA diagram!")
 
     st.divider()
@@ -266,7 +294,7 @@ else:
     ### Supported Operators:
     | Operator | Meaning | Example |
     |----------|---------|---------|
-    | `\|` | Union / OR | `a\|b` matches a or b |
+    | `\\|` | Union / OR | `a\\|b` matches a or b |
     | `*` | Kleene Star (zero or more) | `a*` matches ε, a, aa, ... |
     | `+` | One or more | `a+` matches a, aa, aaa, ... |
     | `?` | Zero or one | `a?` matches ε or a |
